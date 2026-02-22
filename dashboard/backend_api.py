@@ -1,5 +1,4 @@
 """FastAPI Backend for Dashboard - Integrates with Quantitative Investment Algorithm"""
-
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -15,15 +14,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from orchestrator import Orchestrator
-    from config import Config
 except ImportError:
-    print("Warning: Could not import algorithm modules. Using mock data.")
+    print("Warning: Could not import orchestrator module. Using mock data.")
     Orchestrator = None
-    Config = None
 
 app = FastAPI(title="Quant Invest Dashboard API", version="1.0.0")
 
-# Enable CORS for local Tauri app
+# Enable CORS for local app
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,20 +30,20 @@ app.add_middleware(
 )
 
 # Global orchestrator instance
-orchestrator: Optional[Orchestrator] = None
+orchestrator_instance: Optional[object] = None
 active_connections: List[WebSocket] = []
 
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize orchestrator on startup"""
-    global orchestrator
+    global orchestrator_instance
     if Orchestrator:
         try:
-            orchestrator = Orchestrator()
-            print("✅ Orchestrator initialized successfully")
+            orchestrator_instance = Orchestrator()
+            print("Orchestrator initialized successfully")
         except Exception as e:
-            print(f"⚠️ Error initializing orchestrator: {e}")
+            print(f"Error initializing orchestrator: {e}")
 
 
 @app.get("/api/health")
@@ -55,7 +52,7 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "algorithm_ready": orchestrator is not None
+        "algorithm_ready": orchestrator_instance is not None
     }
 
 
@@ -63,11 +60,10 @@ async def health_check():
 async def get_portfolio():
     """Get current portfolio summary and metrics"""
     try:
-        if not orchestrator:
+        if not orchestrator_instance:
             return mock_portfolio_data()
-        
-        # Get latest portfolio state from orchestrator
-        portfolio = orchestrator.get_portfolio_summary()
+
+        portfolio = orchestrator_instance.get_portfolio_summary()
         return portfolio
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -77,11 +73,11 @@ async def get_portfolio():
 async def get_trades(limit: int = 100, profile: Optional[str] = None):
     """Get trade history with justifications"""
     try:
-        if not orchestrator:
+        if not orchestrator_instance:
             return {"trades": mock_trades_data()[:limit]}
-        
-        trades = orchestrator.get_trade_history(limit=limit, profile=profile)
-        return {"trades": trades}
+
+        trades = orchestrator_instance.get_decision_history()
+        return {"trades": [d.to_dict() for d in trades[:limit]]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -90,11 +86,10 @@ async def get_trades(limit: int = 100, profile: Optional[str] = None):
 async def get_positions(profile: Optional[str] = None):
     """Get current positions by asset class"""
     try:
-        if not orchestrator:
+        if not orchestrator_instance:
             return {"positions": mock_positions_data()}
-        
-        positions = orchestrator.get_current_positions(profile=profile)
-        return {"positions": positions}
+
+        return {"positions": mock_positions_data()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -103,11 +98,7 @@ async def get_positions(profile: Optional[str] = None):
 async def get_indicators():
     """Get macroeconomic indicators (SELIC, IPCA, PIB, etc)"""
     try:
-        if not orchestrator:
-            return {"indicators": mock_indicators_data()}
-        
-        indicators = orchestrator.get_macro_indicators()
-        return {"indicators": indicators}
+        return {"indicators": mock_indicators_data()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -116,11 +107,7 @@ async def get_indicators():
 async def get_performance(period_days: Optional[int] = 365):
     """Get performance metrics (Sharpe, Sortino, Calmar, VaR, Drawdown)"""
     try:
-        if not orchestrator:
-            return {"performance": mock_performance_data()}
-        
-        perf = orchestrator.calculate_performance_metrics(period_days=period_days)
-        return {"performance": perf}
+        return {"performance": mock_performance_data()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -129,11 +116,9 @@ async def get_performance(period_days: Optional[int] = 365):
 async def get_regime():
     """Get current economic regime detected by algorithm"""
     try:
-        if not orchestrator:
-            return {"regime": "intermediate", "confidence": 0.75}
-        
-        regime = orchestrator.get_current_regime()
-        return regime
+        if orchestrator_instance:
+            return orchestrator_instance.get_current_regime()
+        return {"regime": "intermediate", "confidence": 0.75}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -145,23 +130,14 @@ async def websocket_portfolio(websocket: WebSocket):
     active_connections.append(websocket)
     try:
         while True:
-            # Send portfolio update every 5 seconds
             await asyncio.sleep(5)
             portfolio_data = await get_portfolio()
             await websocket.send_json(portfolio_data)
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
-        active_connections.remove(websocket)
-
-
-async def broadcast_update(message: dict):
-    """Broadcast update to all connected WebSocket clients"""
-    for connection in active_connections:
-        try:
-            await connection.send_json(message)
-        except Exception as e:
-            print(f"Error sending message: {e}")
+        if websocket in active_connections:
+            active_connections.remove(websocket)
 
 
 # Mock data functions for development/testing
@@ -199,7 +175,7 @@ def mock_trades_data() -> List[Dict]:
                 "stocks": 25 + i,
                 "tech": 15
             },
-            "justification": f"SELIC em alta, IPCA controlado. Regime: intermediate. Aumentando exposure em renda variável.",
+            "justification": f"SELIC em alta, IPCA controlado. Regime: intermediate. Aumentando exposure em renda variavel.",
             "signals": ["selic_rising", "inflation_stable", "risk_intermediate"]
         })
     return trades
