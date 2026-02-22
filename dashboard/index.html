@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 Quant Invest | Dashboard de Investimentos</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+:root {
+  --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --accent: #3b82f6;
+  --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+}
+body { background: var(--bg); color: var(--text); overflow-x: hidden; }
+.nav { background: var(--card); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+.nav h1 { font-size: 1.8rem; color: var(--accent); }
+.nav-btns { display: flex; gap: 1rem; }
+.btn { padding: 0.7rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59,130,246,0.4); }
+.container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+.stat-card { background: var(--card); padding: 1.5rem; border-radius: 12px; transition: transform 0.3s; cursor: pointer; }
+.stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+.stat-label { font-size: 0.9rem; color: #94a3b8; margin-bottom: 0.5rem; }
+.stat-value { font-size: 2rem; font-weight: 700; color: var(--text); }
+.stat-change { font-size: 0.9rem; margin-top: 0.5rem; }
+.positive { color: var(--success); }
+.negative { color: var(--danger); }
+.charts { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+.chart-card { background: var(--card); padding: 1.5rem; border-radius: 12px; }
+.chart-card h3 { margin-bottom: 1rem; color: var(--text); }
+.table { background: var(--card); border-radius: 12px; padding: 1.5rem; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { padding: 1rem; text-align: left; border-bottom: 2px solid #334155; color: #94a3b8; }
+td { padding: 1rem; border-bottom: 1px solid #334155; }
+tr:hover { background: rgba(255,255,255,0.05); }
+.badge { padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+.badge-conservative { background: var(--success); color: white; }
+.badge-intermediate { background: var(--warning); color: white; }
+.badge-aggressive { background: var(--danger); color: white; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+.modal-content { background: var(--card); padding: 2rem; border-radius: 16px; max-width: 600px; width: 90%; animation: slideIn 0.3s; }
+@keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.form-group { margin-bottom: 1.5rem; }
+label { display: block; margin-bottom: 0.5rem; color: #94a3b8; }
+input, select { width: 100%; padding: 0.8rem; border: 1px solid #334155; border-radius: 8px; background: var(--bg); color: var(--text); }
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+@media (max-width: 768px) { .charts { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="nav">
+<h1>📊 Quant Invest</h1>
+<div class="nav-btns">
+<button class="btn btn-primary" onclick="openAporteModal()">+ Novo Aporte</button>
+</div>
+</nav>
+<div class="container">
+<div class="stats">
+<div class="stat-card">
+<div class="stat-label">Saldo Total</div>
+<div class="stat-value">R$ <span id="totalBalance">50.000</span></div>
+<div class="stat-change positive">+12.5% este mês</div>
+</div>
+<div class="stat-card">
+<div class="stat-label">Rentabilidade</div>
+<div class="stat-value"><span id="profitability">12.5</span>%</div>
+<div class="stat-change positive">Acima da meta</div>
+</div>
+<div class="stat-card">
+<div class="stat-label">Sharpe Ratio</div>
+<div class="stat-value"><span id="sharpe">1.85</span></div>
+<div class="stat-change positive">Excelente</div>
+</div>
+<div class="stat-card">
+<div class="stat-label">Max Drawdown</div>
+<div class="stat-value"><span id="drawdown">-8.3</span>%</div>
+<div class="stat-change positive">Controlado</div>
+</div>
+</div>
+<div class="charts">
+<div class="chart-card">
+<h3>📈 Evolução do Portfólio</h3>
+<canvas id="lineChart"></canvas>
+</div>
+<div class="chart-card">
+<h3>🎯 Alocação por Classe</h3>
+<canvas id="pieChart"></canvas>
+</div>
+</div>
+<div class="table">
+<h3 style="margin-bottom: 1rem;">📄 Histórico de Aportes</h3>
+<table id="tradesTable">
+<thead><tr><th>Data</th><th>Valor</th><th>Perfil</th><th>Justificativa</th></tr></thead>
+<tbody id="tradesBody"></tbody>
+</table>
+</div>
+</div>
+<div id="aporteModal" class="modal">
+<div class="modal-content">
+<h2 style="margin-bottom: 1.5rem;">💵 Novo Aporte</h2>
+<div class="form-group"><label>Valor do Aporte (R$)</label><input type="number" id="aporteValue" placeholder="5000" min="100"></div>
+<div class="form-group"><label>Perfil de Risco</label><select id="aportePerfil"><option value="conservador">Conservador</option><option value="intermediario" selected>Intermediário</option><option value="agressivo">Agressivo</option></select></div>
+<div style="display: flex; gap: 1rem; margin-top: 2rem;"><button class="btn btn-primary" onclick="executarAporte()">Executar Aporte</button><button class="btn" style="background: #475569; color: white;" onclick="closeModal()">Cancelar</button></div>
+</div>
+</div>
+<script>
+const API_URL = 'http://localhost:8000';
+const lineCtx = document.getElementById('lineChart').getContext('2d');
+const pieCtx = document.getElementById('pieChart').getContext('2d');
+const lineChart = new Chart(lineCtx, {
+  type: 'line',
+  data: {
+    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+    datasets: [{
+      label: 'Saldo (R$)',
+      data: [40000, 42500, 45000, 47000, 48500, 50000],
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      tension: 0.4,
+      fill: true
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { labels: { color: '#f1f5f9' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
+});
+const pieChart = new Chart(pieCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Renda Fixa', 'Imóveis', 'Ações', 'Tecnologia'],
+    datasets: [{
+      data: [30, 25, 30, 15],
+      backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#f1f5f9' } } } }
+});
+const trades = [
+  { date: '2026-02-15', value: 5000, profile: 'intermediario', justification: 'SELIC em alta, IPCA controlado. Aumentando renda variável.' },
+  { date: '2026-02-01', value: 5000, profile: 'conservador', justification: 'Regime econômico estável. Mantendo RF.' },
+  { date: '2026-01-20', value: 5500, profile: 'agressivo', justification: 'Oportunidade em tech. VIX baixo.' }
+];
+function renderTrades() {
+  const tbody = document.getElementById('tradesBody');
+  tbody.innerHTML = trades.map(t => `
+    <tr>
+      <td>${new Date(t.date).toLocaleDateString('pt-BR')}</td>
+      <td>R$ ${t.value.toLocaleString('pt-BR')}</td>
+      <td><span class="badge badge-${t.profile}">${t.profile.charAt(0).toUpperCase() + t.profile.slice(1)}</span></td>
+      <td>${t.justification}</td>
+    </tr>
+  `).join('');
+}
+function openAporteModal() { document.getElementById('aporteModal').style.display = 'flex'; }
+function closeModal() { document.getElementById('aporteModal').style.display = 'none'; }
+function executarAporte() {
+  const value = document.getElementById('aporteValue').value;
+  const profile = document.getElementById('aportePerfil').value;
+  if (!value || value < 100) { alert('⚠️ Digite um valor válido (mínimo R$ 100)'); return; }
+  trades.unshift({
+    date: new Date().toISOString().split('T')[0],
+    value: parseInt(value),
+    profile: profile,
+    justification: `Aporte de R$ ${value} em perfil ${profile}. Algoritmo calculou alocação ideal.`
+  });
+  renderTrades();
+  const currentBalance = parseInt(document.getElementById('totalBalance').textContent.replace(/\./g, ''));
+  document.getElementById('totalBalance').textContent = (currentBalance + parseInt(value)).toLocaleString('pt-BR');
+  closeModal();
+  alert(`✅ Aporte de R$ ${value} executado com sucesso!`);
+}
+renderTrades();
+</script>
+</body>
+</html>
