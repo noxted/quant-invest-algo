@@ -1,4 +1,24 @@
 # 🚀 Quant Invest Algo
+## 🤖 Modo Agente Automático (Sem Intervenção)
+
+Para rodar o algoritmo como um agente autônomo que monitora o mercado e gera recomendações automaticamente a cada 24h:
+
+```bash
+python main.py --profile intermediate --auto --aporte 5000
+```
+
+## 🚀 Launcher Unificado (Single App)
+
+Para uma experiência simplificada que inicia o backend e o dashboard automaticamente:
+
+```bash
+python app.py
+```
+
+## 📦 Instalação Simples (Windows)
+
+Dê um duplo-clique no arquivo `instalar.bat` para configurar todo o ambiente automaticamente.
+
 
 **Algoritmo Quantitativo de Investimento Automatizado**
 
