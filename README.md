@@ -29,6 +29,8 @@ instalar.bat
 
 O `instalar.bat` faz tudo: cria ambiente virtual, instala dependências e configura o `.env`.
 
+> **IMPORTANTE**: Execute o `instalar.bat` de **dentro da pasta `quant-invest-algo`** (após o `cd quant-invest-algo`). Não rode de outro diretório.
+
 ### Linux / macOS
 
 ```bash
