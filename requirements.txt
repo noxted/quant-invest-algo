@@ -2,36 +2,22 @@
 # requirements.txt - Quant Invest Algo
 # ============================================================
 
-# Core data
+# --- Dados e APIs ---
 pandas==2.2.0
 numpy==1.26.4
 requests==2.31.0
 yfinance==0.2.36
-matplotlib==3.8.2
+python-dotenv==1.0.0
+
+# --- Algoritmos e Calculo ---
+scikit-learn==1.3.0
 scipy==1.12.0
 
-# Machine Learning & RL
-torch==2.0.0                  # Neural networks for RL
-stable-baselines3==2.0.0      # RL algorithms (DQN, PPO, etc)
-gym==0.26.2                   # Reinforcement learning environment
+# --- Dashboard (Backend FastAPI) ---
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+websockets==12.0
+httpx==0.27.0
 
-# Data Science & Analytics
-scikit-learn==1.3.0           # Machine learning metrics (Sharpe, VaR, etc)
-scikit-optimize==0.9.1        # Hyperparameter optimization
-
-# Configuration & Utilities
-python-dotenv==1.0.0          # Environment variables for API keys
-logging-loki==0.3.2           # Structured logging (optional)
-
-# ============================================================
-# Web Backend (Dashboard)
-# ============================================================
-fastapi==0.111.0              # API framework
-uvicorn[standard]==0.29.0     # ASGI server
-httpx==0.27.0                 # HTTP client (usado pelo FastAPI/tests)
-websockets==12.0              # WebSocket support
-
-# ============================================================
-# Build / Packaging
-# ============================================================
-pyinstaller==6.6.0            # Gera o executavel .exe
+# --- Empacotamento (.exe) ---
+pyinstaller==6.6.0
